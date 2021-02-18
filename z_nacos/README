@@ -1,0 +1,67 @@
+1,application.properties 添加了
+##############################
+spring.datasource.platform=mysql
+
+db.num=1
+db.url.0=jdbc:mysql://127.0.0.1:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&serverTimezone=GMT%2B8
+db.user=root
+db.password=root
+
+2,cluster.conf (必须是网卡地址)添加:
+192.168.43.154:3333
+192.168.43.154:4444
+192.168.43.154:5555
+
+3, startup.sh修改两处：
+第一处
+while getopts ":m:f:s:p:" opt
+do
+    case $opt in
+        m)
+            MODE=$OPTARG;;
+        f)
+            FUNCTION_MODE=$OPTARG;;
+        s)
+            SERVER=$OPTARG;;
+        p)
+            PORT=$OPTARG;;
+        ?)
+        echo "Unknown parameter"
+        exit 1;;
+    esac
+done
+
+第二处
+# start
+echo "$JAVA ${JAVA_OPT}" > ${BASE_DIR}/logs/start.out 2>&1 &
+nohup $JAVA -Dserver.port=${PORT} ${JAVA_OPT} nacos.nacos >> ${BASE_DIR}/logs/start.out 2>&1 &
+echo "nacos is starting，you can check the ${BASE_DIR}/logs/start.out"
+
+nacos启动：./startup.sh -p 3333
+
+
+2, nginx修改了：
+
+#gzip  on;
+
+    upstream cluster {
+        server 127.0.0.1:3333;
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen       1111;
+        server_name  localhost;
+        #server_name  192.168.43.154;
+
+        location / {
+	        proxy_pass   http://cluster;
+            #root   html;
+            #index  index.html index.htm;
+        }
+
+nginx sbin 目录下启动：./nginx -c /usr/local/nginx/conf/nginx.conf
+
+3, 测试
+通过nginx访问nacos：http://192.168.43.154:1111/nacos/#/login
